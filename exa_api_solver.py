@@ -295,14 +295,55 @@ def _get_or_create_api_key(session):
 # ──────────────────────────────────────────────
 
 def _create_session():
-    """创建 requests Session 并获取初始 cookies。"""
+    """创建 requests Session 并获取初始 cookies（含 cf_clearance）。"""
     session = std_requests.Session()
     session.headers.update(_SESSION_HEADERS)
+    # 访问 auth 页面获取 Cloudflare 初始 cookies
     try:
         session.get(_EXA_AUTH_URL, timeout=15)
     except Exception:
         pass
     return session
+
+
+def _has_cf_clearance(session):
+    """检查 session 是否已持有 cf_clearance cookie。"""
+    return any(
+        "cf_clearance" in (c.name or "")
+        for c in session.cookies
+    )
+
+
+def _ensure_cf_clearance(session):
+    """确保 session 持有 cf_clearance，没有则尝试通过 Solver 获取。"""
+    if _has_cf_clearance(session):
+        print("✅ cf_clearance 已就绪")
+        return True
+
+    print("⚠️  缺少 cf_clearance，尝试通过 Turnstile Solver 获取...")
+    turnstile_token = solve_turnstile(_EXA_AUTH_URL, _EXA_SITEKEY)
+    if not turnstile_token:
+        print("❌ 无法获取 Turnstile token，cf_clearance 获取失败")
+        return False
+
+    # 用 token 访问一次 auth 页面让 CF 设置 clearance
+    try:
+        resp = session.get(
+            _EXA_AUTH_URL,
+            headers={"Cookie": f"cf-turnstile-response={turnstile_token}"},
+            timeout=15,
+        )
+    except Exception:
+        pass
+
+    # 再检查一次
+    if _has_cf_clearance(session):
+        print("✅ cf_clearance 已获取")
+        return True
+
+    # 最后尝试：通过 signin/email 请求让服务器端验证并设置
+    print("⚠️  cf_clearance 仍缺失，将在 signin 请求后自动获取")
+    return True  # 不阻塞流程，signin 成功后 CF 会设置
 
 
 def _get_csrf_token(session):
@@ -352,6 +393,10 @@ def _send_verification_email(session, email, csrf_token):
         return False
 
     if resp.status_code in (200, 302):
+        # 检查 signin 响应是否带回了 cf_clearance
+        cf_cookies = [c for c in session.cookies if "cf" in c.name.lower()]
+        if cf_cookies:
+            print(f"✅ signin 响应包含 CF cookies: {[c.name for c in cf_cookies]}")
         return True
 
     # NextAuth email provider 的 signin 成功后通常返回 302 或 200 带 redirect url
@@ -361,6 +406,11 @@ def _send_verification_email(session, email, csrf_token):
 
 def _verify_email_code(session, email, code):
     """GET callback/email 验证验证码，返回是否成功。"""
+    # callback 前确保有 cf_clearance，缺少则直接走浏览器回退
+    if not _has_cf_clearance(session):
+        print("⚠️  缺少 cf_clearance，callback 大概率失败，切换到浏览器回退")
+        return False
+
     params = {
         "token": code,
         "email": email,
@@ -437,6 +487,7 @@ def _extract_session_from_browser(page):
 
     try:
         all_cookies = page.context.cookies()
+        cf_found = False
         for cookie in all_cookies:
             domain = cookie.get("domain", "")
             if "exa.ai" in domain or "exa.ai" in cookie.get("domain", ""):
@@ -446,6 +497,12 @@ def _extract_session_from_browser(page):
                     domain=cookie.get("domain", ""),
                     path=cookie.get("path", "/"),
                 )
+                if "cf_clearance" in (cookie.get("name") or "").lower():
+                    cf_found = True
+        if cf_found:
+            print("✅ 已提取 cf_clearance cookie")
+        else:
+            print("⚠️  浏览器中未找到 cf_clearance cookie")
     except Exception as exc:
         print(f"⚠️  提取 cookies 失败: {exc}")
 
@@ -512,6 +569,9 @@ def register_with_api(email, password):
     except Exception as exc:
         print(f"❌ 获取 CSRF token 失败: {exc}")
         return None
+
+    # 确保持有 cf_clearance（通过 Solver 获取 Turnstile token 并换取）
+    _ensure_cf_clearance(session)
 
     if not _send_verification_email(session, email, csrf_token):
         return None
