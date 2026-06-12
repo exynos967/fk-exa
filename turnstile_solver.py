@@ -45,10 +45,15 @@ def solve_turnstile(url, sitekey, action=None, cdata=None, timeout=60):
         print(f"❌ Solver 请求异常: {e}")
         return None
 
-    task_id = data.get("task_id")
+    # Turnstile-Solver 可能返回 task_id 或 taskId
+    task_id = data.get("task_id") or data.get("taskId")
     if not task_id:
-        print(f"❌ Solver 未返回 task_id: {data}")
-        return None
+        # 有些版本把 errorId:0 当作成功信号
+        if data.get("errorId") == 0 and data.get("taskId"):
+            task_id = data["taskId"]
+        else:
+            print(f"❌ Solver 未返回 task_id: {data}")
+            return None
 
     # 2. 轮询结果
     deadline = time.time() + timeout
@@ -67,20 +72,27 @@ def solve_turnstile(url, sitekey, action=None, cdata=None, timeout=60):
             time.sleep(1)
             continue
 
-        # 已解决
+        # 已解决 — 格式1: {value: "token", elapsed_time: N}
         if "value" in result and result["value"] and result["value"] != "CAPTCHA_FAIL":
             elapsed = result.get("elapsed_time", 0)
             token = result["value"]
             print(f"✅ Turnstile 已解决 (耗时 {elapsed}s)")
             return token
 
+        # 已解决 — 格式2: {errorId: 0, status: "ready", solution: {token: "..."}}
+        if result.get("status") == "ready" and "solution" in result:
+            token = result["solution"].get("token", "")
+            if token:
+                print(f"✅ Turnstile 已解决")
+                return token
+
         # 处理中
         if result.get("status") == "processing":
             time.sleep(1)
             continue
 
-        # 失败
-        if "errorId" in result:
+        # 已失败 (errorId != 0 且不是 ready/processing)
+        if "errorId" in result and result["errorId"] != 0:
             print(f"❌ Solver 返回错误: {result.get('errorDescription', result)}")
             return None
 
