@@ -101,44 +101,6 @@ from firecrawl_core import register as register_firecrawl
 from exa_core import register as register_exa
 from mail_provider import create_email, get_active_domain, get_configured_domains, set_selected_domain
 
-def _camoufox_browser_ready():
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", "camoufox", "path"],
-            capture_output=True,
-            check=True,
-            text=True,
-        )
-    except Exception:
-        return False
-
-    install_dir = result.stdout.strip()
-    if not install_dir:
-        return False
-
-    if os.path.isfile(install_dir):
-        return True
-
-    if not os.path.isdir(install_dir):
-        return False
-
-    try:
-        return bool(os.listdir(install_dir))
-    except OSError:
-        return False
-
-def _ensure_camoufox_browser():
-    if _camoufox_browser_ready():
-        return
-
-    print("正在下载 Camoufox 浏览器...")
-    subprocess.check_call([sys.executable, "-m", "camoufox", "fetch"])
-    print("✅ 浏览器下载完成\n")
-
-def _ensure_service_browsers(service):
-    # Firecrawl / Exa 当前均为 API-only 协议流，不再需要浏览器运行时。
-    return
-
 def validate_runtime_config(upload, show_provider_summary=True):
     if EMAIL_PROVIDER not in SUPPORTED_EMAIL_PROVIDERS:
         print(f"❌ 不支持的 EMAIL_PROVIDER: {EMAIL_PROVIDER}")
@@ -480,8 +442,6 @@ def main():
 
     if upload and not validate_runtime_config(True, show_provider_summary=False):
         return
-
-    _ensure_service_browsers(service)
 
     run_register_flow(count, DEFAULT_DELAY, upload, concurrency, service)
 
