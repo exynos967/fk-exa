@@ -1,6 +1,4 @@
 camoufox==0.4.11
-patchright==1.58.2
 psutil==7.1.0
-quart==0.20.0
 requests==2.32.5
 rich==14.3.3

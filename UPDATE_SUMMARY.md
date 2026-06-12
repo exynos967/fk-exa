@@ -27,8 +27,8 @@
 
 ### 3. 主程序更新
 修改了 `run.py`，添加：
-- ✅ 服务选择功能（Tavily / Firecrawl）
-- ✅ 条件性 Solver 启动（仅 Tavily 需要）
+- ✅ 服务选择功能（Firecrawl / Exa）
+- ✅ 条件性 Solver 启动（已移除内置 Solver，改为外置）
 - ✅ 服务参数传递到所有相关函数
 - ✅ 完全向后兼容原有功能
 
@@ -50,7 +50,7 @@ python3 run.py
 启动后会看到：
 ```
 请选择要注册的服务：
-  1. Tavily
+  1. Firecrawl
   2. Firecrawl
 请输入选项 (1-2，默认 1):
 ```
@@ -88,36 +88,33 @@ python3 test_firecrawl.py
 11. 验证 API Key（调用 `POST /v2/scrape`）
 12. 保存到文件
 
-### 与 Tavily 的区别
+### 服务对比
 
-| 特性 | Tavily | Firecrawl |
-|------|--------|-----------|
-| 验证方式 | 6位验证码 | 邮件链接 |
-| Captcha | Turnstile | 无 |
-| 需要 Solver | 是 | 否 |
-| 密码页 challenge | 有 | 无 |
-| API 前缀 | tvly- | fc- |
+| 特性 | Exa | Firecrawl |
+|------|-----|-----------|
+| 验证方式 | 邮箱验证码 | 邮件链接 |
+| Captcha | 无 | 无 |
+| 需要 Solver | 否 | 否 |
+| API 前缀 | exa- | fc- |
 | 验证端点 | /search | /v2/scrape |
 
 ## 📁 项目结构
 
 ```
-tavily-key-generator/
-├── run.py                       # 主入口（已更新）
-├── tavily_core.py               # Tavily 入口
-├── tavily_browser_solver.py     # Tavily 核心逻辑
-├── firecrawl_core.py            # Firecrawl 入口（新增）
-├── firecrawl_browser_solver.py  # Firecrawl 核心逻辑（新增）
-├── test_firecrawl.py            # Firecrawl 测试（新增）
-├── api_solver.py                # Turnstile Solver
+├── run.py                       # 主入口
+├── firecrawl_core.py            # Firecrawl 入口
+├── firecrawl_browser_solver.py  # Firecrawl 核心逻辑
+├── exa_core.py                  # Exa 入口
+├── exa_browser_solver.py        # Exa 核心逻辑
+├── test_firecrawl.py            # Firecrawl 测试
 ├── mail_provider.py             # 邮箱抽象层
 ├── config.py                    # 配置管理
-├── accounts.txt                 # Tavily 输出
-├── firecrawl_accounts.txt       # Firecrawl 输出（新增）
-├── CHANGELOG.md                 # 更新日志（新增）
-├── README.md                    # 主文档（已更新）
+├── firecrawl_accounts.txt       # Firecrawl 输出
+├── exa_accounts.txt             # Exa 输出
+├── CHANGELOG.md                 # 更新日志
+├── README.md                    # 主文档
 └── docs/
-    ├── FIRECRAWL.md             # Firecrawl 文档（新增）
+    ├── FIRECRAWL.md             # Firecrawl 文档
     └── ...
 ```
 
@@ -168,4 +165,4 @@ tavily-key-generator/
 
 ## ✨ 总结
 
-项目已成功扩展为多服务支持，现在可以同时注册 Tavily 和 Firecrawl 账号。所有原有功能保持不变，新增功能完全独立，互不影响。
+项目已成功扩展为多服务支持，现在可以同时注册 Firecrawl 和 Exa 账号。Tavily 和内置 Turnstile Solver 已于 2026-06-12 移除。

@@ -1,6 +1,7 @@
 """
 使用 Camoufox 完成 Exa 注册
-思路：通过邮箱验证码登录，跳过 onboarding，并提取默认 API Key
+思路：通过邮箱验证码登录，跳过 onboarding，并提取默认 API Key。
+若页面出现 Turnstile 挑战，通过外置 Solver 解决。
 """
 import json
 import os
@@ -13,6 +14,7 @@ from camoufox.sync_api import Camoufox
 
 from config import API_KEY_TIMEOUT, EMAIL_CODE_TIMEOUT, REGISTER_HEADLESS
 from mail_provider import get_email_code
+from turnstile_solver import solve_turnstile
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _SAVE_FILE = os.path.join(_HERE, "exa_accounts.txt")
@@ -20,6 +22,7 @@ _SAVE_LOCK = threading.Lock()
 _ACCOUNT_PASSWORD_LABEL = "EMAIL_OTP_ONLY"
 _EXA_AUTH_URL = "https://auth.exa.ai/?callbackUrl=https%3A%2F%2Fdashboard.exa.ai%2F"
 _EXA_HOME_URL = "https://dashboard.exa.ai/home"
+_EXA_TURNSTILE_SITEKEY = "0x4AAAAAADSpJWQOnICEKAwx"
 
 
 def fill_first_input(page, selectors, value):
@@ -177,6 +180,51 @@ def verify_api_key(api_key, timeout=30):
     return False
 
 
+def _detect_and_solve_turnstile(page):
+    """检测页面上是否有 Turnstile 挑战，如有则通过外置 Solver 解决并注入 token。"""
+    try:
+        has_widget = page.locator('.cf-turnstile, [data-sitekey]').count()
+        has_iframe = page.locator('iframe[src*="challenges.cloudflare.com"], iframe[src*="turnstile"]').count()
+    except Exception:
+        return
+
+    if not has_widget and not has_iframe:
+        return
+
+    print("🔐 检测到 Turnstile 挑战，调用外置 Solver...")
+    token = solve_turnstile(page.url, _EXA_TURNSTILE_SITEKEY)
+    if not token:
+        print("⚠️  Turnstile 解决失败，继续尝试注册...")
+        return
+
+    # 注入 token 到页面
+    page.evaluate(
+        """
+        (token) => {
+            // 设置隐藏的 cf-turnstile-response 输入框
+            let input = document.querySelector('input[name="cf-turnstile-response"]');
+            if (!input) {
+                input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'cf-turnstile-response';
+                document.body.appendChild(input);
+            }
+            input.value = token;
+
+            // 触发 Turnstile callback（如果存在）
+            if (typeof window._turnstileTokenCallback === 'function') {
+                window._turnstileTokenCallback(token);
+            }
+            if (typeof window.turnstileCallback === 'function') {
+                window.turnstileCallback(token);
+            }
+        }
+        """,
+        token,
+    )
+    print("✅ Turnstile token 已注入")
+
+
 def register_with_browser(email, password):
     """使用浏览器完成 Exa 邮箱验证码注册"""
     print(f"🌐 使用浏览器模式注册 Exa: {email}")
@@ -187,6 +235,9 @@ def register_with_browser(email, password):
 
             page.goto(_EXA_AUTH_URL, wait_until="networkidle", timeout=30000)
             time.sleep(2)
+
+            # 检测并解决 Turnstile 挑战
+            _detect_and_solve_turnstile(page)
 
             email_selector = fill_first_input(
                 page,

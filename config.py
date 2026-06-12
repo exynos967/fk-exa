@@ -1,5 +1,5 @@
 """
-Tavily 注册器配置
+注册器配置
 优先读取环境变量；若项目根目录存在 .env，则先载入。
 """
 import os
@@ -12,6 +12,8 @@ PLACEHOLDER_ENV_VALUES = {
     "EMAIL_DOMAINS": {"example.com", "example.org"},
     "DUCKMAIL_DOMAIN": {"example.com"},
     "DUCKMAIL_DOMAINS": {"example.com", "example.org"},
+    "CLOUD_MAIL_DOMAIN": {"example.com"},
+    "CLOUD_MAIL_DOMAINS": {"example.com", "example.org"},
     "SERVER_URL": {"https://your-server.example.com"},
     "SERVER_ADMIN_PASSWORD": {"replace-with-your-admin-password"},
 }
@@ -85,7 +87,7 @@ _load_dotenv()
 
 # 邮箱配置
 EMAIL_PROVIDER = _get_str("EMAIL_PROVIDER", "cloudflare").lower()
-SUPPORTED_EMAIL_PROVIDERS = ("cloudflare", "duckmail")
+SUPPORTED_EMAIL_PROVIDERS = ("cloudflare", "duckmail", "cloudmail")
 EMAIL_API_URL = _get_str("EMAIL_API_URL")
 EMAIL_API_TOKEN = _get_str("EMAIL_API_TOKEN")
 EMAIL_DOMAIN = _get_str("EMAIL_DOMAIN")
@@ -94,6 +96,13 @@ DUCKMAIL_API_URL = _get_str("DUCKMAIL_API_URL", "https://api.duckmail.sbs")
 DUCKMAIL_API_KEY = _get_str("DUCKMAIL_API_KEY")
 DUCKMAIL_DOMAIN = _get_str("DUCKMAIL_DOMAIN")
 DUCKMAIL_DOMAINS = _get_list("DUCKMAIL_DOMAINS", DUCKMAIL_DOMAIN)
+
+# Cloud Mail 配置
+CLOUD_MAIL_API_URL = _get_str("CLOUD_MAIL_API_URL", "https://mail.skymail.ink")
+CLOUD_MAIL_EMAIL = _get_str("CLOUD_MAIL_EMAIL")
+CLOUD_MAIL_PASSWORD = _get_str("CLOUD_MAIL_PASSWORD")
+CLOUD_MAIL_DOMAIN = _get_str("CLOUD_MAIL_DOMAIN")
+CLOUD_MAIL_DOMAINS = _get_list("CLOUD_MAIL_DOMAINS", CLOUD_MAIL_DOMAIN)
 
 # 上传目标
 SERVER_URL = _get_str("SERVER_URL")
@@ -113,7 +122,5 @@ EMAIL_CODE_TIMEOUT = _get_int("EMAIL_CODE_TIMEOUT", 90)
 API_KEY_TIMEOUT = _get_int("API_KEY_TIMEOUT", 20)
 EMAIL_POLL_INTERVAL = _get_int("EMAIL_POLL_INTERVAL", 3)
 
-# Solver 配置
-SOLVER_PORT = _get_str("SOLVER_PORT", "5073")
-LOCAL_SOLVER_URL = _get_str("LOCAL_SOLVER_URL", f"http://127.0.0.1:{SOLVER_PORT}")
-SOLVER_THREADS = _get_int("SOLVER_THREADS", 1)
+# 外置 Turnstile Solver
+TURNSTILE_SOLVER_URL = _get_str("TURNSTILE_SOLVER_URL", "http://127.0.0.1:5000")

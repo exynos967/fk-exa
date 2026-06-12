@@ -12,7 +12,6 @@ upstream for:
 
 - `Firecrawl`: available
 - `Exa`: available
-- `Tavily`: based on the current local project testing, the official email registration entry is closed, so it is temporarily unavailable
 
 It is not the main product repository for `MySearch`.  
 If you want the public-facing unified search console, MCP, Skill, and Social / X
@@ -23,7 +22,6 @@ integration, use the standalone project:
 ## What this repo is for
 
 - real local browser-based registration
-- local Turnstile solving for Tavily
 - email API based verification link / code retrieval
 - immediate live API validation after a key is extracted
 - optional upload into unified proxy pools
@@ -31,9 +29,9 @@ integration, use the standalone project:
 
 ## Features
 
-- Multi-service launcher: choose Tavily / Firecrawl / Exa at startup
+- Multi-service launcher: choose Firecrawl / Exa at startup
 - Automatic environment bootstrap: checks `venv`, dependencies, and browsers
-- Unified mail layer: supports Cloudflare Mail API and DuckMail
+- Unified mail layer: supports Cloudflare Mail API, DuckMail, and Cloud Mail
 - Multi-domain support: choose the active domain at runtime
 - Concurrent registration: batch and parallel runs are supported
 - Background browser mode: headless by default, visible mode when debugging
@@ -94,16 +92,14 @@ start_auto.bat
 Current launcher options:
 
 ```text
-1. Tavily
-2. Firecrawl
-3. Exa
+1. Firecrawl
+2. Exa
 ```
 
 Notes:
 
 - `Exa` accounts are saved to `exa_accounts.txt`
 - the saved format is `email,EMAIL_OTP_ONLY,api_key`
-- the `Tavily` option is still shown in the launcher, but it is currently unavailable based on local testing
 
 ## Recommended Pairing
 
@@ -115,7 +111,7 @@ service, the recommended deployment target is:
 That project provides:
 
 - a unified console
-- Tavily / Firecrawl / Social / X routing
+- Firecrawl / Social / X routing
 - MCP + Skill installation docs
 - official API and compatible gateway support
 - final integration guidance for Codex / Claude Code

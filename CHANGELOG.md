@@ -1,5 +1,23 @@
 # 项目更新日志
 
+## 2026-06-12 - 移除 Tavily 和内置 Turnstile Solver
+
+### 变更
+
+1. **移除 Tavily 支持**
+   - 删除 `tavily_core.py`、`tavily_browser_solver.py`
+   - 清理 `run.py`、`mail_provider.py` 中所有 Tavily 相关代码
+   
+2. **移除内置 Turnstile Solver**
+   - 删除 `api_solver.py`、`browser_configs.py`、`db_results.py`
+   - 从 `run.py` 移除 Solver 管理、Patchright 浏览器安装逻辑
+   - 从 `requirements.txt` 移除 `patchright`、`quart` 依赖
+   - Turnstile 解决能力改为外置服务
+
+3. **简化服务选择**
+   - 启动台只保留 Firecrawl 和 Exa 两个选项
+   - 移除条件性 Solver 启动逻辑
+
 ## 2026-03-16 - 添加 Firecrawl 支持
 
 ### 新增功能

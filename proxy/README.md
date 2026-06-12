@@ -15,7 +15,7 @@
 `MySearch-Proxy` 负责：
 
 - 统一控制台
-- `Tavily + Firecrawl + Social / X` 聚合路由
+- `Firecrawl + Social / X` 聚合路由
 - MCP Server
 - 可直接安装给智能体使用的 Skill
 - 官方接口与 compatible 网关双接入
@@ -35,10 +35,10 @@
 
 当前仓库继续负责上游 provider 层：
 
-- 注册 Tavily / Firecrawl key
+- 注册 Firecrawl / Exa key
 - 做真实可用性验证
 - 可选上传到统一代理池
-- 作为 `MySearch-Proxy` 的 Tavily / Firecrawl key 来源
+- 作为 `MySearch-Proxy` 的 Firecrawl / Exa key 来源
 
 注册器上传时仍会带上 `service` 字段，例如：
 
@@ -52,8 +52,8 @@
 
 所以：
 
-- Tavily 上传会进入 Tavily 池
 - Firecrawl 上传会进入 Firecrawl 池
+- Exa 上传会进入 Exa 池
 - 服务端不需要再靠 key 前缀猜测服务
 
 ## 迁移建议
@@ -79,9 +79,6 @@ docker pull skernelx/mysearch-proxy:latest
 
 `MySearch-Proxy` 仍然兼容这些重点接口：
 
-- Tavily
-  - `POST /api/search`
-  - `POST /api/extract`
 - Firecrawl
   - `/firecrawl/*`
   - 示例：`POST /firecrawl/v2/scrape`

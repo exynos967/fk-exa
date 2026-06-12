@@ -490,6 +490,6 @@ def register_with_browser(email, password):
         return None
 
 if __name__ == "__main__":
-    from tavily_core import create_email
+    from mail_provider import create_email
     email, password = create_email(service="firecrawl")
     register_with_browser(email, password)

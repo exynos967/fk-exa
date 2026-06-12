@@ -110,16 +110,6 @@ A: 可能的原因：
 - 智能选择器匹配
 - 并发安全的文件写入
 
-## 与 Tavily 的区别
-
-| 特性 | Tavily | Firecrawl |
-|------|--------|-----------|
-| 验证方式 | 6位验证码 | 邮件链接 |
-| Captcha | Turnstile | 无 |
-| Solver | 需要 | 不需要 |
-| 密码页 | 有 challenge | 无 |
-| API 前缀 | tvly- | fc- |
-
 ## 相关链接
 
 - [Firecrawl 官网](https://firecrawl.dev)
