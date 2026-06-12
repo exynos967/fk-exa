@@ -11,6 +11,7 @@ ENV/
 # 账号信息
 accounts.txt
 firecrawl_accounts.txt
+firecrawl-keys.txt
 exa_accounts.txt
 accounts.csv
 .env

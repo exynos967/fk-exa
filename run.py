@@ -237,7 +237,7 @@ def print_runtime_summary(service="firecrawl"):
         "exa": "Exa",
     }.get(service, "Firecrawl")
     output_file = {
-        "firecrawl": "firecrawl_accounts.txt",
+        "firecrawl": "firecrawl-keys.txt",
         "exa": "exa-keys.txt",
     }.get(service, "accounts.txt")
     account_prefix = {

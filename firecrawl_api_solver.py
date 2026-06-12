@@ -19,7 +19,7 @@ except Exception as exc:  # pragma: no cover - 启动期依赖错误
     raise RuntimeError("Firecrawl API-only 模式需要安装 curl_cffi") from exc
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_SAVE_FILE = os.path.join(_HERE, "firecrawl_accounts.txt")
+_SAVE_FILE = os.path.join(_HERE, "firecrawl-keys.txt")
 _SAVE_LOCK = threading.Lock()
 
 _FIRECRAWL_BASE = "https://www.firecrawl.dev"
@@ -620,10 +620,10 @@ def verify_api_key(api_key, timeout=30):
     return False
 
 
-def save_account(email, password, api_key):
+def save_account(api_key):
     with _SAVE_LOCK:
         with open(_SAVE_FILE, "a", encoding="utf-8") as file:
-            file.write(f"{email},{password},{api_key}\n")
+            file.write(f"{api_key}\n")
 
 
 def register_with_api(email, password):
@@ -686,7 +686,7 @@ def register_with_api(email, password):
     elif verify_result is None:
         print("⚠️  API Key 可用性暂时无法确认，仍然保存")
 
-    save_account(email, password, api_key)
+    save_account(api_key)
     print("🎉 注册成功")
     print(f"   邮箱: {email}")
     print(f"   密码: {password}")
