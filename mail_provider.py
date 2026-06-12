@@ -4,6 +4,7 @@
 1. Cloudflare 自定义邮件 API
 2. DuckMail API
 3. Cloud Mail (skymail) API
+4. TempMail API
 """
 import html
 import random
@@ -29,6 +30,12 @@ from config import (
     EMAIL_DOMAINS,
     EMAIL_POLL_INTERVAL,
     EMAIL_PROVIDER,
+    TEMPMAIL_API_KEY,
+    TEMPMAIL_API_URL,
+    TEMPMAIL_DOMAIN,
+    TEMPMAIL_DOMAINS,
+    TEMPMAIL_DOMAIN_PREFIX,
+    TEMPMAIL_MODE,
 )
 
 _DUCKMAIL_DOMAIN_PRIORITY = (
@@ -39,6 +46,7 @@ _DUCKMAIL_DOMAIN_CACHE = None
 _DUCKMAIL_MAILBOX_CACHE = {}
 _CLOUD_MAIL_TOKEN_CACHE = None
 _CLOUD_MAIL_MAILBOX_CACHE = {}
+_TEMPMAIL_MAILBOX_CACHE = {}
 _SELECTED_DOMAIN = ""
 _SUPPORTED_SERVICES = ("firecrawl", "exa")
 
@@ -52,6 +60,8 @@ def get_configured_domains():
         return DUCKMAIL_DOMAINS[:]
     if EMAIL_PROVIDER == "cloudmail":
         return CLOUD_MAIL_DOMAINS[:]
+    if EMAIL_PROVIDER == "tempmail":
+        return TEMPMAIL_DOMAINS[:]
     return EMAIL_DOMAINS[:]
 
 def get_active_domain():
@@ -67,6 +77,8 @@ def get_active_domain():
         return DUCKMAIL_DOMAIN
     if EMAIL_PROVIDER == "cloudmail":
         return CLOUD_MAIL_DOMAIN
+    if EMAIL_PROVIDER == "tempmail":
+        return TEMPMAIL_DOMAIN
     return EMAIL_DOMAIN
 
 def set_selected_domain(domain):
@@ -98,6 +110,8 @@ def create_email(service="firecrawl"):
         email = _create_duckmail_mailbox(password, prefix)
     elif EMAIL_PROVIDER == "cloudmail":
         email = _create_cloudmail_mailbox(password, prefix)
+    elif EMAIL_PROVIDER == "tempmail":
+        email = _create_tempmail_mailbox(password, prefix)
     else:
         username = f"{prefix}-{rand_str()}"
         email = f"{username}@{get_active_domain()}"
@@ -123,11 +137,12 @@ def get_verification_link(email, timeout=120):
 def get_email_code(email, timeout=120, service="firecrawl"):
     """等待邮箱里的 6 位验证码。"""
     print(f"📨 等待邮箱验证码（最多 {timeout} 秒）...")
+    found_message = "✅ 收到验证码" if _normalize_service(service) == "exa" else "✅ 收到 6 位验证码"
     return _poll_mailbox(
         email=email,
         timeout=timeout,
         extractor=lambda message: _extract_email_code(message, service=service),
-        found_message="✅ 收到 6 位验证码",
+        found_message=found_message,
         timeout_message="❌ 等待邮箱验证码超时",
         error_prefix="读取邮箱验证码失败",
         dot_progress=False,
@@ -205,7 +220,7 @@ def _extract_email_code(message, service="firecrawl"):
             return None
         for source in (text, content):
             match = re.search(
-                r"verification code(?:\s+for\s+exa)?(?:\s+is)?[^0-9]*(\d{6})",
+                r"verification code(?:\s+for\s+exa)?(?:\s+is)?[^A-Z0-9]*([A-Z0-9]{6})",
                 source,
                 re.IGNORECASE,
             )
@@ -228,6 +243,9 @@ def _iter_messages(email):
         return
     if EMAIL_PROVIDER == "cloudmail":
         yield from _cloudmail_iter_messages(email)
+        return
+    if EMAIL_PROVIDER == "tempmail":
+        yield from _tempmail_iter_messages(email)
         return
 
     yield from _cloudflare_iter_messages(email)
@@ -390,6 +408,250 @@ def _duckmail_request(method, path, token=None, use_api_key=False, **kwargs):
         timeout=kwargs.pop("timeout", 15),
         **kwargs,
     )
+
+
+# ──────────────────────────────────────────────
+# TempMail provider
+# ──────────────────────────────────────────────
+
+def _normalize_tempmail_mode():
+    mode = (TEMPMAIL_MODE or "auto").strip().lower()
+    if mode in {"single", "multi"}:
+        return mode
+    return "auto"
+
+
+def _randomize_tempmail_pattern(pattern):
+    return ".".join(
+        "".join(
+            random.choice(string.ascii_lowercase + string.digits) if char == "*" else char
+            for char in segment
+        )
+        for segment in pattern.split(".")
+        if segment
+    )
+
+
+def _resolve_tempmail_domain(base_domain):
+    base_domain = (base_domain or "").strip()
+    pattern = (TEMPMAIL_DOMAIN_PREFIX or "").strip()
+
+    if not pattern:
+        mode = _normalize_tempmail_mode()
+        return {
+            "mode": "single" if mode == "auto" else mode,
+            "domain": base_domain,
+            "subdomain": None,
+        }
+
+    resolved = _randomize_tempmail_pattern(pattern)
+    if re.fullmatch(r"[a-z0-9]([a-z0-9\-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]*[a-z0-9])?)*", resolved):
+        return {
+            "mode": "multi",
+            "domain": base_domain,
+            "subdomain": resolved,
+        }
+
+    return {
+        "mode": "single",
+        "domain": f"{resolved}.{base_domain}",
+        "subdomain": None,
+    }
+
+
+def _tempmail_request(method, path, **kwargs):
+    headers = dict(kwargs.pop("headers", {}))
+    headers["Authorization"] = f"Bearer {TEMPMAIL_API_KEY}"
+    if "json" in kwargs:
+        headers.setdefault("Content-Type", "application/json")
+
+    return std_requests.request(
+        method,
+        f"{TEMPMAIL_API_URL.rstrip('/')}{path}",
+        headers=headers,
+        timeout=kwargs.pop("timeout", 15),
+        **kwargs,
+    )
+
+
+def _tempmail_extract_list(payload):
+    if isinstance(payload, list):
+        return payload
+    if not isinstance(payload, dict):
+        return []
+
+    for key in ("data", "mailboxes", "emails", "items", "results"):
+        value = payload.get(key)
+        if isinstance(value, list):
+            return value
+    return []
+
+
+def _tempmail_extract_mailbox(payload):
+    if not isinstance(payload, dict):
+        return {}
+    mailbox = payload.get("mailbox")
+    if isinstance(mailbox, dict):
+        return mailbox
+    return payload
+
+
+def _tempmail_extract_email(payload):
+    if not isinstance(payload, dict):
+        return {}
+    email = payload.get("email")
+    if isinstance(email, dict):
+        return email
+    return payload
+
+
+def _tempmail_mailbox_address(mailbox):
+    if not isinstance(mailbox, dict):
+        return ""
+
+    full_address = (
+        mailbox.get("full_address")
+        or mailbox.get("fullAddress")
+        or mailbox.get("email")
+    )
+    if full_address:
+        return str(full_address).strip()
+
+    address = mailbox.get("address")
+    domain = mailbox.get("domain")
+    if address and domain:
+        return f"{address}@{domain}"
+    if address and "@" in str(address):
+        return str(address).strip()
+    return ""
+
+
+def _tempmail_mailbox_id(mailbox):
+    if not isinstance(mailbox, dict):
+        return ""
+    mailbox_id = mailbox.get("id") or mailbox.get("mailbox_id") or mailbox.get("mailboxId")
+    return str(mailbox_id).strip() if mailbox_id else ""
+
+
+def _tempmail_normalize_message(message):
+    if not isinstance(message, dict):
+        return {"text": str(message)}
+
+    sender = (
+        message.get("sender")
+        or message.get("from_addr")
+        or message.get("fromAddress")
+        or message.get("from")
+        or ""
+    )
+    text = message.get("body_text") or message.get("text_body") or message.get("text") or ""
+    html_body = message.get("body_html") or message.get("html_body") or message.get("html") or ""
+
+    normalized = dict(message)
+    normalized.setdefault("id", message.get("email_id") or message.get("emailId"))
+    normalized["from"] = sender
+    normalized["message_from"] = sender
+    normalized["text"] = text
+    normalized["html"] = html_body
+    return normalized
+
+
+def _tempmail_create_mailbox_payload(prefix):
+    username = f"{prefix}-{rand_str()}"
+    selected_domain = get_active_domain()
+    payload = {"address": username}
+    if selected_domain:
+        resolved = _resolve_tempmail_domain(selected_domain)
+        payload["domain"] = resolved["domain"]
+        payload["mode"] = resolved["mode"]
+        if resolved["subdomain"]:
+            payload["subdomain"] = resolved["subdomain"]
+    else:
+        mode = _normalize_tempmail_mode()
+        if mode != "auto":
+            payload["mode"] = mode
+
+    return payload
+
+
+def _create_tempmail_mailbox(_password, prefix):
+    for _ in range(5):
+        payload = _tempmail_create_mailbox_payload(prefix)
+        response = _tempmail_request("POST", "/api/mailboxes", json=payload)
+
+        if response.status_code in (200, 201):
+            mailbox = _tempmail_extract_mailbox(response.json())
+            email = _tempmail_mailbox_address(mailbox)
+            mailbox_id = _tempmail_mailbox_id(mailbox)
+            if not email or not mailbox_id:
+                raise RuntimeError("TempMail 创建邮箱成功，但响应缺少邮箱地址或 mailbox id")
+
+            _TEMPMAIL_MAILBOX_CACHE[email] = {
+                "id": mailbox_id,
+                "full_address": email,
+            }
+            return email
+
+        if response.status_code == 409:
+            continue
+        if response.status_code == 400:
+            raise RuntimeError(f"TempMail 域名不存在或未激活: {_response_error_message(response)}")
+        if response.status_code == 503:
+            raise RuntimeError("TempMail 当前无可用域名")
+        response.raise_for_status()
+
+    raise RuntimeError("TempMail 邮箱创建失败：随机地址重复次数过多")
+
+
+def _tempmail_get_mailbox_context(email, refresh=False):
+    mailbox = _TEMPMAIL_MAILBOX_CACHE.get(email)
+    if mailbox and not refresh:
+        return mailbox
+
+    response = _tempmail_request("GET", "/api/mailboxes", params={"page": 1, "size": 100})
+    response.raise_for_status()
+
+    for item in _tempmail_extract_list(response.json()):
+        full_address = _tempmail_mailbox_address(item)
+        if full_address.lower() != email.lower():
+            continue
+
+        mailbox = {
+            "id": _tempmail_mailbox_id(item),
+            "full_address": full_address,
+        }
+        _TEMPMAIL_MAILBOX_CACHE[email] = mailbox
+        return mailbox
+
+    raise RuntimeError(f"TempMail 未找到邮箱上下文: {email}")
+
+
+def _tempmail_iter_messages(email):
+    try:
+        mailbox = _tempmail_get_mailbox_context(email)
+        mailbox_id = mailbox["id"]
+        response = _tempmail_request(
+            "GET",
+            f"/api/mailboxes/{mailbox_id}/emails",
+            params={"page": 1, "size": 20},
+        )
+        response.raise_for_status()
+
+        for summary in _tempmail_extract_list(response.json()):
+            email_id = _message_id(summary)
+            detail = summary
+
+            if email_id:
+                detail_response = _tempmail_request(
+                    "GET",
+                    f"/api/mailboxes/{mailbox_id}/emails/{email_id}",
+                )
+                if detail_response.status_code == 200:
+                    detail = _tempmail_extract_email(detail_response.json())
+
+            yield _tempmail_normalize_message(detail)
+    except Exception:
+        return
 
 
 # ──────────────────────────────────────────────

@@ -34,3 +34,13 @@ proxy/data/
 
 # 本地 UI 验证临时截图
 proxy-ui-*.png
+
+# 本地手动测试脚本
+tests/test_firecrawl.py
+tests/test_exa_api_solver.py
+tests/test_mail_provider.py
+tests/test_tempmail_provider.py
+
+# 本地 key 文件
+key.txt
+exa-keys.txt

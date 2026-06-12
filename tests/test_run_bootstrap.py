@@ -38,13 +38,23 @@ class RunBootstrapTests(unittest.TestCase):
 
         self.assertEqual(browser_commands, [])
 
-    def test_ensure_service_browsers_calls_camoufox(self) -> None:
+    def test_ensure_service_browsers_skips_exa(self) -> None:
         run, _ = _import_run_with_stubbed_check_call()
 
         with (
             patch.object(run, "_ensure_camoufox_browser") as ensure_camoufox,
         ):
             run._ensure_service_browsers("exa")
+
+        ensure_camoufox.assert_not_called()
+
+    def test_ensure_service_browsers_calls_camoufox_for_firecrawl(self) -> None:
+        run, _ = _import_run_with_stubbed_check_call()
+
+        with (
+            patch.object(run, "_ensure_camoufox_browser") as ensure_camoufox,
+        ):
+            run._ensure_service_browsers("firecrawl")
 
         ensure_camoufox.assert_called_once_with()
 

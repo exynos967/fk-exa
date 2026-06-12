@@ -88,6 +88,11 @@ from config import (
     EMAIL_API_TOKEN,
     EMAIL_DOMAINS,
     SUPPORTED_EMAIL_PROVIDERS,
+    TEMPMAIL_API_KEY,
+    TEMPMAIL_API_URL,
+    TEMPMAIL_DOMAINS,
+    TEMPMAIL_DOMAIN_PREFIX,
+    TEMPMAIL_MODE,
     DEFAULT_COUNT,
     DEFAULT_DELAY,
     is_placeholder_env_value,
@@ -131,7 +136,8 @@ def _ensure_camoufox_browser():
     print("✅ 浏览器下载完成\n")
 
 def _ensure_service_browsers(service):
-    _ensure_camoufox_browser()
+    if service == "firecrawl":
+        _ensure_camoufox_browser()
 
 def validate_runtime_config(upload, show_provider_summary=True):
     if EMAIL_PROVIDER not in SUPPORTED_EMAIL_PROVIDERS:
@@ -160,6 +166,13 @@ def validate_runtime_config(upload, show_provider_summary=True):
             missing.append("CLOUD_MAIL_DOMAIN / CLOUD_MAIL_DOMAINS（二选一）")
         elif any(is_placeholder_env_value("CLOUD_MAIL_DOMAINS", item) for item in CLOUD_MAIL_DOMAINS):
             append_unique(placeholder, "CLOUD_MAIL_DOMAIN / CLOUD_MAIL_DOMAINS")
+    elif EMAIL_PROVIDER == "tempmail":
+        required.update({
+            "TEMPMAIL_API_URL": TEMPMAIL_API_URL,
+            "TEMPMAIL_API_KEY": TEMPMAIL_API_KEY,
+        })
+        if TEMPMAIL_DOMAINS and any(is_placeholder_env_value("TEMPMAIL_DOMAINS", item) for item in TEMPMAIL_DOMAINS):
+            append_unique(placeholder, "TEMPMAIL_DOMAIN / TEMPMAIL_DOMAINS")
     else:
         required.update({
             "EMAIL_API_URL": EMAIL_API_URL,
@@ -205,6 +218,13 @@ def validate_runtime_config(upload, show_provider_summary=True):
             print(f"📧 当前邮箱 provider: cloudmail")
             print(f"   域名配置: {', '.join(CLOUD_MAIL_DOMAINS) if CLOUD_MAIL_DOMAINS else '未配置'}")
             print(f"   管理员: {CLOUD_MAIL_EMAIL or '未配置'}")
+        elif EMAIL_PROVIDER == "tempmail":
+            print(f"📧 当前邮箱 provider: tempmail")
+            print(f"   API: {TEMPMAIL_API_URL}")
+            print(f"   域名配置: {', '.join(TEMPMAIL_DOMAINS) if TEMPMAIL_DOMAINS else '自动分配'}")
+            print(f"   创建模式: {TEMPMAIL_MODE}")
+            if TEMPMAIL_DOMAIN_PREFIX:
+                print(f"   多级前缀模板: {TEMPMAIL_DOMAIN_PREFIX}")
         else:
             print(f"📧 当前邮箱 provider: cloudflare")
             print(f"   域名配置: {', '.join(EMAIL_DOMAINS)}")
