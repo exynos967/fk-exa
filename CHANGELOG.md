@@ -1,5 +1,17 @@
 # 项目更新日志
 
+## 2026-06-12 - Exa 改为 HTTP 协议注册机
+
+### 变更
+
+- **新增 `exa_api_solver.py`**：纯 HTTP 协议注册，替代浏览器自动化
+  - 对接外置 Turnstile Solver 解决 Cloudflare 挑战
+  - CSRF + signin/email + callback/email 协议流程
+  - 自动完成 onboarding、兑换赠金码 EXA50API
+  - 浏览器仅作为 callback/email 回退方案
+- **输出格式**：改为 `exa-keys.txt`，一行一个 API Key
+- 保留 `exa_browser_solver.py` 作为备用
+
 ## 2026-06-12 - 移除 Tavily 和内置 Turnstile Solver
 
 ### 变更

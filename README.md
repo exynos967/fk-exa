@@ -97,8 +97,8 @@ start_auto.bat
 
 补充说明：
 
-- `Exa` 注册成功后会保存到 `exa_accounts.txt`
-- `Exa` 的格式是 `email,EMAIL_OTP_ONLY,api_key`
+- `Exa` 使用 HTTP 协议注册，自动过 Turnstile + 邮箱验证码 + 领赠金
+- 注册成功后会保存到 `exa-keys.txt`（一行一个 API Key）
 
 ## 推荐搭配方式
 
