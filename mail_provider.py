@@ -101,9 +101,22 @@ def _username_prefix(service):
     return "exa"
 
 
+def _generate_password():
+    """生成不含 4 连续/重复字符的强密码，兼容 Firecrawl 密码规则。"""
+    groups = (
+        (string.ascii_uppercase.replace("I", "").replace("O", ""), string.ascii_lowercase),
+        (string.digits.replace("0", "").replace("1", ""), "!@#$%*"),
+        (string.ascii_uppercase.replace("I", "").replace("O", ""), string.ascii_lowercase),
+        (string.digits.replace("0", "").replace("1", ""), "!@#$%*"),
+        (string.ascii_uppercase.replace("I", "").replace("O", ""), string.ascii_lowercase),
+        (string.digits.replace("0", "").replace("1", ""), "!@#$%*"),
+    )
+    return "".join(random.choice(pool) for pair in groups for pool in pair)
+
+
 def create_email(service="firecrawl"):
     """按当前 provider 生成邮箱与强密码。"""
-    password = f"Tv{rand_str(6)}{random.randint(100, 999)}!A"
+    password = _generate_password()
     prefix = _username_prefix(service)
 
     if EMAIL_PROVIDER == "duckmail":
