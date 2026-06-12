@@ -48,7 +48,7 @@ def _ensure_deps():
     req_file = os.path.join(_HERE, "requirements.txt")
     missing = []
     pkg_map = {
-        "camoufox": "camoufox",
+        "curl_cffi": "curl_cffi",
         "psutil": "psutil",
         "requests": "requests",
         "rich": "rich",
@@ -136,8 +136,8 @@ def _ensure_camoufox_browser():
     print("✅ 浏览器下载完成\n")
 
 def _ensure_service_browsers(service):
-    if service == "firecrawl":
-        _ensure_camoufox_browser()
+    # Firecrawl / Exa 当前均为 API-only 协议流，不再需要浏览器运行时。
+    return
 
 def validate_runtime_config(upload, show_provider_summary=True):
     if EMAIL_PROVIDER not in SUPPORTED_EMAIL_PROVIDERS:

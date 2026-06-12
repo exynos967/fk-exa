@@ -2,12 +2,12 @@
 Firecrawl 注册统一入口
 """
 from mail_provider import create_email
-from firecrawl_browser_solver import register_with_browser
+from firecrawl_api_solver import register_with_api
 
 
 def register(email, password):
     """统一注册入口"""
-    return register_with_browser(email, password)
+    return register_with_api(email, password)
 
 
 if __name__ == "__main__":
