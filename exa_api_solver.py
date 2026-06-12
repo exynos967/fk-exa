@@ -9,7 +9,7 @@ import threading
 import time
 from urllib.parse import parse_qs, quote, urljoin, urlparse
 
-from config import EMAIL_CODE_TIMEOUT
+from config import EMAIL_CODE_TIMEOUT, REQUEST_PROXIES
 from mail_provider import get_email_code
 from turnstile_solver import solve_turnstile
 
@@ -49,13 +49,19 @@ _SESSION_HEADERS = {
 
 def _new_http_session():
     if _HTTP_BACKEND == "curl_cffi":
-        return http_requests.Session(impersonate="chrome131")
-    return http_requests.Session()
+        session = http_requests.Session(impersonate="chrome131")
+    else:
+        session = http_requests.Session()
+    if REQUEST_PROXIES:
+        session.proxies.update(REQUEST_PROXIES)
+    return session
 
 
 def _http_request(method, url, **kwargs):
     if _HTTP_BACKEND == "curl_cffi":
         kwargs.setdefault("impersonate", "chrome131")
+    if REQUEST_PROXIES:
+        kwargs.setdefault("proxies", REQUEST_PROXIES)
     return http_requests.request(method, url, **kwargs)
 
 

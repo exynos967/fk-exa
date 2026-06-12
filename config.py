@@ -64,6 +64,15 @@ def _get_bool(name, default=False):
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _build_proxy_map(proxy_url):
+    if not proxy_url:
+        return None
+    return {
+        "http": proxy_url,
+        "https": proxy_url,
+    }
+
+
 def is_placeholder_env_value(name, value):
     normalized = (value or "").strip()
     if not normalized:
@@ -122,6 +131,9 @@ DEFAULT_COUNT = _get_int("DEFAULT_COUNT", 5)
 DEFAULT_CONCURRENCY = _get_int("DEFAULT_CONCURRENCY", 2)
 DEFAULT_DELAY = _get_int("DEFAULT_DELAY", 10)
 DEFAULT_UPLOAD = _get_bool("DEFAULT_UPLOAD", True)
+
+REGISTER_PROXY = _get_str("REGISTER_PROXY")
+REQUEST_PROXIES = _build_proxy_map(REGISTER_PROXY)
 
 EMAIL_CODE_TIMEOUT = _get_int("EMAIL_CODE_TIMEOUT", 90)
 API_KEY_TIMEOUT = _get_int("API_KEY_TIMEOUT", 20)

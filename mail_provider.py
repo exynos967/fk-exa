@@ -30,6 +30,7 @@ from config import (
     EMAIL_DOMAINS,
     EMAIL_POLL_INTERVAL,
     EMAIL_PROVIDER,
+    REQUEST_PROXIES,
     TEMPMAIL_API_KEY,
     TEMPMAIL_API_URL,
     TEMPMAIL_DOMAIN,
@@ -269,6 +270,7 @@ def _cloudflare_iter_messages(email):
         f"{EMAIL_API_URL}/messages",
         params={"address": email},
         headers={"Authorization": f"Bearer {EMAIL_API_TOKEN}"},
+        proxies=REQUEST_PROXIES,
         timeout=10,
     )
     response.raise_for_status()
@@ -418,6 +420,7 @@ def _duckmail_request(method, path, token=None, use_api_key=False, **kwargs):
         method,
         f"{DUCKMAIL_API_URL.rstrip('/')}{path}",
         headers=headers,
+        proxies=REQUEST_PROXIES,
         timeout=kwargs.pop("timeout", 15),
         **kwargs,
     )
@@ -482,6 +485,7 @@ def _tempmail_request(method, path, **kwargs):
         method,
         f"{TEMPMAIL_API_URL.rstrip('/')}{path}",
         headers=headers,
+        proxies=REQUEST_PROXIES,
         timeout=kwargs.pop("timeout", 15),
         **kwargs,
     )
@@ -680,6 +684,7 @@ def _cloudmail_get_token():
     response = std_requests.post(
         f"{CLOUD_MAIL_API_URL.rstrip('/')}/api/public/genToken",
         json={"email": CLOUD_MAIL_EMAIL, "password": CLOUD_MAIL_PASSWORD},
+        proxies=REQUEST_PROXIES,
         timeout=15,
     )
     response.raise_for_status()
@@ -706,6 +711,7 @@ def _cloudmail_request(method, path, json=None, timeout=15):
         f"{CLOUD_MAIL_API_URL.rstrip('/')}{path}",
         headers=headers,
         json=json,
+        proxies=REQUEST_PROXIES,
         timeout=timeout,
     )
 

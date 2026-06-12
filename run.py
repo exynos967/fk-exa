@@ -82,6 +82,7 @@ from config import (
     DUCKMAIL_API_URL,
     DUCKMAIL_DOMAINS,
     EMAIL_PROVIDER,
+    REGISTER_PROXY,
     SERVER_URL,
     SERVER_ADMIN_PASSWORD,
     EMAIL_API_URL,
@@ -218,6 +219,7 @@ def print_runtime_summary(service="firecrawl"):
     print(f"  账号前缀: {account_prefix}")
     print(f"  输出文件: {output_file}")
     print(f"  邮箱链路: {EMAIL_PROVIDER}")
+    print(f"  注册代理: {'开启' if REGISTER_PROXY else '关闭'}")
     print(f"  注册间隔: {DEFAULT_DELAY}s")
     print(f"  默认并发: {DEFAULT_CONCURRENCY}")
     print(f"  默认上传: {'开启' if DEFAULT_UPLOAD else '关闭'}")
