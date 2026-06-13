@@ -94,6 +94,9 @@ from config import (
     TEMPMAIL_DOMAINS,
     TEMPMAIL_DOMAIN_PREFIX,
     TEMPMAIL_MODE,
+    YYDS_API_KEY,
+    YYDS_API_URL,
+    YYDS_DOMAINS,
     DEFAULT_COUNT,
     DEFAULT_DELAY,
     is_placeholder_env_value,
@@ -136,6 +139,14 @@ def validate_runtime_config(upload, show_provider_summary=True):
         })
         if TEMPMAIL_DOMAINS and any(is_placeholder_env_value("TEMPMAIL_DOMAINS", item) for item in TEMPMAIL_DOMAINS):
             append_unique(placeholder, "TEMPMAIL_DOMAIN / TEMPMAIL_DOMAINS")
+    elif EMAIL_PROVIDER == "yyds":
+        required.update({
+            "YYDS_API_KEY": YYDS_API_KEY,
+        })
+        if not YYDS_DOMAINS:
+            missing.append("YYDS_DOMAIN / YYDS_DOMAINS（二选一）")
+        elif any(is_placeholder_env_value("YYDS_DOMAINS", item) for item in YYDS_DOMAINS):
+            append_unique(placeholder, "YYDS_DOMAIN / YYDS_DOMAINS")
     else:
         required.update({
             "EMAIL_API_URL": EMAIL_API_URL,
@@ -188,6 +199,10 @@ def validate_runtime_config(upload, show_provider_summary=True):
             print(f"   创建模式: {TEMPMAIL_MODE}")
             if TEMPMAIL_DOMAIN_PREFIX:
                 print(f"   多级前缀模板: {TEMPMAIL_DOMAIN_PREFIX}")
+        elif EMAIL_PROVIDER == "yyds":
+            print(f"📧 当前邮箱 provider: yyds")
+            print(f"   API: {YYDS_API_URL}")
+            print(f"   域名配置: {', '.join(YYDS_DOMAINS) if YYDS_DOMAINS else '自动分配'}")
         else:
             print(f"📧 当前邮箱 provider: cloudflare")
             print(f"   域名配置: {', '.join(EMAIL_DOMAINS)}")

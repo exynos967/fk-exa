@@ -17,6 +17,8 @@ PLACEHOLDER_ENV_VALUES = {
     "TEMPMAIL_API_KEY": {"replace-with-your-token"},
     "TEMPMAIL_DOMAIN": {"example.com"},
     "TEMPMAIL_DOMAINS": {"example.com", "example.org"},
+    "YYDS_DOMAIN": {"example.com"},
+    "YYDS_DOMAINS": {"example.com", "example.org"},
     "SERVER_URL": {"https://your-server.example.com"},
     "SERVER_ADMIN_PASSWORD": {"replace-with-your-admin-password"},
 }
@@ -99,7 +101,7 @@ _load_dotenv()
 
 # 邮箱配置
 EMAIL_PROVIDER = _get_str("EMAIL_PROVIDER", "cloudflare").lower()
-SUPPORTED_EMAIL_PROVIDERS = ("cloudflare", "duckmail", "cloudmail", "tempmail")
+SUPPORTED_EMAIL_PROVIDERS = ("cloudflare", "duckmail", "cloudmail", "tempmail", "yyds")
 EMAIL_API_URL = _get_str("EMAIL_API_URL")
 EMAIL_API_TOKEN = _get_str("EMAIL_API_TOKEN")
 EMAIL_DOMAIN = _get_str("EMAIL_DOMAIN")
@@ -121,6 +123,12 @@ TEMPMAIL_DOMAIN = _get_str("TEMPMAIL_DOMAIN")
 TEMPMAIL_DOMAINS = _get_list("TEMPMAIL_DOMAINS", TEMPMAIL_DOMAIN)
 TEMPMAIL_MODE = _get_str("TEMPMAIL_MODE", "auto").lower()
 TEMPMAIL_DOMAIN_PREFIX = _get_str("TEMPMAIL_DOMAIN_PREFIX")
+
+# YYDS Mail (215.im) 配置
+YYDS_API_URL = _get_str("YYDS_API_URL", "https://maliapi.215.im/v1")
+YYDS_API_KEY = _get_str("YYDS_API_KEY")
+YYDS_DOMAIN = _get_str("YYDS_DOMAIN")
+YYDS_DOMAINS = _get_list("YYDS_DOMAINS", YYDS_DOMAIN)
 
 # 上传目标
 SERVER_URL = _get_str("SERVER_URL")

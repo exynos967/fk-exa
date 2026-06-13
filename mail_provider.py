@@ -5,6 +5,7 @@
 2. DuckMail API
 3. Cloud Mail (skymail) API
 4. TempMail API
+5. YYDS Mail (215.im) API
 """
 import html
 import random
@@ -37,6 +38,10 @@ from config import (
     TEMPMAIL_DOMAINS,
     TEMPMAIL_DOMAIN_PREFIX,
     TEMPMAIL_MODE,
+    YYDS_API_KEY,
+    YYDS_API_URL,
+    YYDS_DOMAIN,
+    YYDS_DOMAINS,
 )
 
 _DUCKMAIL_DOMAIN_PRIORITY = (
@@ -48,6 +53,7 @@ _DUCKMAIL_MAILBOX_CACHE = {}
 _CLOUD_MAIL_TOKEN_CACHE = None
 _CLOUD_MAIL_MAILBOX_CACHE = {}
 _TEMPMAIL_MAILBOX_CACHE = {}
+_YYDS_MAILBOX_CACHE = {}
 _SELECTED_DOMAIN = ""
 _SUPPORTED_SERVICES = ("firecrawl", "exa")
 
@@ -63,6 +69,8 @@ def get_configured_domains():
         return CLOUD_MAIL_DOMAINS[:]
     if EMAIL_PROVIDER == "tempmail":
         return TEMPMAIL_DOMAINS[:]
+    if EMAIL_PROVIDER == "yyds":
+        return YYDS_DOMAINS[:]
     return EMAIL_DOMAINS[:]
 
 def get_active_domain():
@@ -80,6 +88,8 @@ def get_active_domain():
         return CLOUD_MAIL_DOMAIN
     if EMAIL_PROVIDER == "tempmail":
         return TEMPMAIL_DOMAIN
+    if EMAIL_PROVIDER == "yyds":
+        return YYDS_DOMAIN
     return EMAIL_DOMAIN
 
 def set_selected_domain(domain):
@@ -126,6 +136,8 @@ def create_email(service="firecrawl"):
         email = _create_cloudmail_mailbox(password, prefix)
     elif EMAIL_PROVIDER == "tempmail":
         email = _create_tempmail_mailbox(password, prefix)
+    elif EMAIL_PROVIDER == "yyds":
+        email = _create_yyds_mailbox(password, prefix)
     else:
         username = f"{prefix}-{rand_str()}"
         email = f"{username}@{get_active_domain()}"
@@ -260,6 +272,9 @@ def _iter_messages(email):
         return
     if EMAIL_PROVIDER == "tempmail":
         yield from _tempmail_iter_messages(email)
+        return
+    if EMAIL_PROVIDER == "yyds":
+        yield from _yyds_iter_messages(email)
         return
 
     yield from _cloudflare_iter_messages(email)
@@ -772,6 +787,127 @@ def _cloudmail_iter_messages(email):
             # Cloud Mail 用 sendName 做发件人名字，补上 from 字段兼容提取逻辑
             message.setdefault("from", message.get("sendEmail", ""))
             yield message
+    except Exception:
+        return
+
+
+# ──────────────────────────────────────────────
+# YYDS Mail (215.im) provider
+# ──────────────────────────────────────────────
+
+def _yyds_create_request(json_body, timeout=15):
+    """用 API Key 发 YYDS 请求。"""
+    return std_requests.post(
+        f"{YYDS_API_URL}/accounts",
+        json=json_body,
+        headers={
+            "X-API-Key": YYDS_API_KEY,
+            "Content-Type": "application/json",
+        },
+        timeout=timeout,
+    )
+
+
+def _yyds_auth_request(method, path, token, **kwargs):
+    """用 temp token 发 YYDS 请求。"""
+    return std_requests.request(
+        method,
+        f"{YYDS_API_URL}{path}",
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=kwargs.pop("timeout", 15),
+        **kwargs,
+    )
+
+
+def _create_yyds_mailbox(password, prefix):
+    """通过 YYDS API 创建临时邮箱。"""
+    domain = get_active_domain()
+
+    for _ in range(5):
+        local_part = f"{prefix}-{rand_str()}"
+        response = _yyds_create_request({
+            "localPart": local_part,
+            "domain": domain,
+        })
+
+        if response.status_code in (200, 201):
+            data = response.json()
+            if data.get("success"):
+                account = data["data"]
+                email = account["address"]
+                token = account["token"]
+                _YYDS_MAILBOX_CACHE[email] = {
+                    "password": password,
+                    "token": token,
+                }
+                return email
+
+        if response.status_code not in (400, 409, 422):
+            response.raise_for_status()
+
+        message = _response_error_message(response).lower()
+        if "exists" in message or "already" in message or "duplicate" in message:
+            continue
+
+        raise RuntimeError(f"YYDS 创建邮箱失败: {_response_error_message(response)}")
+
+    raise RuntimeError("YYDS 邮箱创建失败：随机地址重复次数过多")
+
+
+def _yyds_iter_messages(email):
+    """通过 YYDS API 轮询邮件。"""
+    mailbox = _YYDS_MAILBOX_CACHE.get(email)
+    if not mailbox:
+        return
+
+    token = mailbox["token"]
+    try:
+        # 列出消息
+        response = _yyds_auth_request(
+            "GET",
+            f"/messages?address={email}",
+            token,
+            timeout=10,
+        )
+        if response.status_code != 200:
+            return
+        data = response.json()
+        if not data.get("success"):
+            return
+
+        messages = data.get("data", {}).get("messages", [])
+        for msg in messages:
+            msg_id = msg.get("id")
+            if not msg_id:
+                continue
+
+            # 获取消息详情（含 body）
+            detail = _yyds_auth_request(
+                "GET",
+                f"/messages/{msg_id}?address={email}",
+                token,
+                timeout=10,
+            )
+            if detail.status_code != 200:
+                # 没有详情就用列表数据
+                msg["id"] = msg_id
+                msg.setdefault("msgid", msg_id)
+                msg.setdefault("from", msg.get("from", {}).get("address", ""))
+                msg.setdefault("subject", msg.get("subject", ""))
+                yield msg
+                continue
+
+            detail_data = detail.json()
+            if detail_data.get("success"):
+                full = detail_data["data"]
+                full["id"] = full.get("id", msg_id)
+                full.setdefault("msgid", full["id"])
+                full.setdefault("from", (full.get("from") or {}).get("address", ""))
+                # html 可能是数组，join 一下
+                html_val = full.get("html")
+                if isinstance(html_val, list):
+                    full["html"] = " ".join(html_val)
+                yield full
     except Exception:
         return
 
