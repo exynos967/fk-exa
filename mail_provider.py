@@ -106,10 +106,7 @@ def _normalize_service(service):
 
 
 def _username_prefix(service):
-    service = _normalize_service(service)
-    if service == "firecrawl":
-        return "fc"
-    return "exa"
+    return rand_str(8)
 
 
 def _generate_password():
