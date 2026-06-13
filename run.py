@@ -143,10 +143,6 @@ def validate_runtime_config(upload, show_provider_summary=True):
         required.update({
             "YYDS_API_KEY": YYDS_API_KEY,
         })
-        if not YYDS_DOMAINS:
-            missing.append("YYDS_DOMAIN / YYDS_DOMAINS（二选一）")
-        elif any(is_placeholder_env_value("YYDS_DOMAINS", item) for item in YYDS_DOMAINS):
-            append_unique(placeholder, "YYDS_DOMAIN / YYDS_DOMAINS")
     else:
         required.update({
             "EMAIL_API_URL": EMAIL_API_URL,

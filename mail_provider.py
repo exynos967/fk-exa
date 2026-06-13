@@ -817,15 +817,15 @@ def _yyds_auth_request(method, path, token, **kwargs):
 
 
 def _create_yyds_mailbox(password, prefix):
-    """通过 YYDS API 创建临时邮箱。"""
+    """通过 YYDS API 创建临时邮箱。域名可选，不填则用 API Key 默认。"""
     domain = get_active_domain()
 
     for _ in range(5):
         local_part = f"{prefix}-{rand_str()}"
-        response = _yyds_create_request({
-            "localPart": local_part,
-            "domain": domain,
-        })
+        body = {"localPart": local_part}
+        if domain:
+            body["domain"] = domain
+        response = _yyds_create_request(body)
 
         if response.status_code in (200, 201):
             data = response.json()
